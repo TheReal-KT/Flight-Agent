@@ -41,4 +41,4 @@ Thumbs.db
 *.log
 
 # API Keys (if any)
-.env
+.envflight_assistant/config.py
