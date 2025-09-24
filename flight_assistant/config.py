@@ -1,0 +1,3 @@
+# Amadeus API credentials
+AMADEUS_CLIENT_ID = "hUfpoyts5p1VDGGmOjPXJE8yofNpZQI0"
+AMADEUS_CLIENT_SECRET = "ZNEaK5q5UsZ8kxhe"
