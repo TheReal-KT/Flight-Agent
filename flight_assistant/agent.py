@@ -1,11 +1,16 @@
 from google.adk.agents import LlmAgent
 from google.adk.tools import google_search
 from amadeus import Client, ResponseError
-from .config import AMADEUS_CLIENT_ID, AMADEUS_CLIENT_SECRET
+from .config import AMADEUS_CLIENT_ID, AMADEUS_CLIENT_SECRET, GOOGLE_API_KEY
+import os
 
 def flight_checker(location: str, date: str) -> dict: 
     # 1 Check the flight 
     try: 
+        # Validate that API credentials are available
+        if not AMADEUS_CLIENT_ID or not AMADEUS_CLIENT_SECRET:
+            return {"error": "Amadeus API credentials not found. Please check your .env file."}
+        
         # Initialize Amadeus client
         amadeus = Client(
             client_id=AMADEUS_CLIENT_ID,
@@ -13,17 +18,32 @@ def flight_checker(location: str, date: str) -> dict:
         )
         
         # Parse location (assuming format: "origin-destination")
-        origin, destination = location.split("-")
+        if "-" not in location:
+            return {"error": "Location format should be 'ORIGIN-DESTINATION' (e.g., 'JFK-LAX')"}
+        
+        try:
+            origin, destination = location.split("-")
+            origin = origin.strip().upper()
+            destination = destination.strip().upper()
+        except ValueError:
+            return {"error": "Invalid location format. Use 'ORIGIN-DESTINATION' format."}
+        
+        # Validate IATA codes (should be 3 characters)
+        if len(origin) != 3 or len(destination) != 3:
+            return {"error": "Airport codes must be 3-letter IATA codes (e.g., JFK, LAX)"}
         
         # Format date (assuming YYYY-MM-DD format)
         # Amadeus requires date in ISO format (YYYY-MM-DD)
+        if not date or len(date) != 10 or date.count('-') != 2:
+            return {"error": "Date must be in YYYY-MM-DD format"}
         
         # Search for flights
         response = amadeus.shopping.flight_offers_search.get(
-            originLocationCode=origin.strip(),
-            destinationLocationCode=destination.strip(),
+            originLocationCode=origin,
+            destinationLocationCode=destination,
             departureDate=date,
-            adults=1
+            adults=1,
+            max=10  # Limit results to avoid overwhelming response
         )
         
         # Process the response
@@ -53,9 +73,16 @@ def flight_checker(location: str, date: str) -> dict:
             "all_options": len(flights)
         }
     except ResponseError as error:
-        return {"error": f"Amadeus API error: {error}"}
+        error_msg = f"Amadeus API error: {error}"
+        if hasattr(error, 'response') and error.response:
+            if error.response.status_code == 400:
+                error_msg += "\n400 Bad Request - Check your airport codes and date format."
+                error_msg += "\nEnsure airport codes are valid 3-letter IATA codes and date is in YYYY-MM-DD format."
+            elif error.response.status_code == 401:
+                error_msg += "\n401 Unauthorized - Check your Amadeus API credentials."
+        return {"error": error_msg}
     except Exception as e: 
-        return {"error": str(e)}
+        return {"error": f"General error: {str(e)}"}
 
 
 greeting_agent = LlmAgent(

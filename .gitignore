@@ -42,3 +42,5 @@ Thumbs.db
 
 # API Keys (if any)
 .envflight_assistant/config.py
+flight_assistant/env
+flight_assistant/.env

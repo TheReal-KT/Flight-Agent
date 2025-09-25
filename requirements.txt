@@ -1,2 +1,4 @@
 google-generativeai==0.8.5
 google-adk[database]==0.3.0
+amadeus
+python-dotenv
